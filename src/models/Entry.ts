@@ -3,6 +3,7 @@ import mongoose, { Schema, Document, models, Model, Types } from 'mongoose';
 
 export interface IEntry extends Document {
   tableId: Types.ObjectId; 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   data: Map<string, any>; 
   createdAt: Date;
   updatedAt: Date;

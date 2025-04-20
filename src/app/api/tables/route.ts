@@ -1,12 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import mongoose, { MongooseError } from 'mongoose'; 
+import { MongooseError } from 'mongoose';
 import dbConnect from '@/lib/dbConnect';
 import Table from '@/models/Table';
 
 
-export async function GET(request: NextRequest) {
+export async function GET() {
  
-  const _unusedRequest = request;
   await dbConnect();
   try {
     const tables = await Table.find({}).select('name createdAt updatedAt');
@@ -53,9 +52,10 @@ export async function POST(request: NextRequest) {
         if (error.name === 'ValidationError') {
             message = error.message;
             status = 400;
-            errorDetails = (error as any).errors; 
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            errorDetails = (error as any).errors;
             return NextResponse.json({ success: false, message, errors: errorDetails }, { status });
-        } else if ((error as any).code === 11000) { 
+        } else if ((error as any).code === 11000) {
             message = `Table name must be unique. A table with the provided name likely already exists.`;
             status = 409;
         }

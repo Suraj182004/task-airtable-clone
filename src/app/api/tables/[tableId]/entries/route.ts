@@ -171,6 +171,7 @@ export async function POST(request: NextRequest, context: RequestContext) {
             message = error.message;
             status = 400;
            
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             errorDetails = (error as any).errors;
              return NextResponse.json({ success: false, message, errors: errorDetails }, { status });
         } else if (error instanceof Error) {
