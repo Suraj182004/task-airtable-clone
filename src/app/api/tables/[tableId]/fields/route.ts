@@ -76,7 +76,7 @@ export async function POST(request: NextRequest, context: RequestContext) {
         };
 
        
-        table.fields.push(newField as any);
+        table.fields.push(newField as unknown as IField);
 
         await table.save();
 
@@ -96,9 +96,153 @@ export async function POST(request: NextRequest, context: RequestContext) {
             message = error.message;
             status = 400;
            
-            errorDetails = (error as any).errors;
+            errorDetails = (error as MongooseError & { errors: Record<string, unknown> }).errors;
             return NextResponse.json({ success: false, message, errors: errorDetails }, { status });
         } else if (error instanceof Error) {
+            message = error.message;
+        }
+
+        return NextResponse.json({ success: false, message }, { status });
+    }
+}
+
+
+export async function PUT(request: NextRequest, context: RequestContext) {
+    const { tableId } = context.params;
+    await dbConnect();
+
+    if (!mongoose.Types.ObjectId.isValid(tableId)) {
+        return NextResponse.json({ success: false, message: 'Invalid Table ID format' }, { status: 400 });
+    }
+
+    try {
+        const body = await request.json();
+        const { fieldId, name, type } = body;
+
+        if (!fieldId || !mongoose.Types.ObjectId.isValid(fieldId)) {
+            return NextResponse.json({ success: false, message: 'Valid field ID is required' }, { status: 400 });
+        }
+
+        if (!name || typeof name !== 'string' || name.trim() === '') {
+            return NextResponse.json({ success: false, message: 'Field name is required and must be a non-empty string.' }, { status: 400 });
+        }
+
+        if (type && (typeof type !== 'string' || !validFieldTypes.includes(type as FieldType))) {
+            return NextResponse.json({ success: false, message: `Field type must be one of: ${validFieldTypes.join(', ')}.` }, { status: 400 });
+        }
+
+        const trimmedName = name.trim();
+
+        const table = await Table.findById(tableId);
+        if (!table) {
+            return NextResponse.json({ success: false, message: 'Table not found' }, { status: 404 });
+        }
+
+        const fieldIndex = table.fields.findIndex(
+            field => String(field._id) === fieldId
+        );
+
+        if (fieldIndex === -1) {
+            return NextResponse.json({ success: false, message: 'Field not found' }, { status: 404 });
+        }
+
+       
+        const fieldNameExists = table.fields.some(
+            (field, index) => index !== fieldIndex && 
+            field.name.toLowerCase() === trimmedName.toLowerCase()
+        );
+
+        if (fieldNameExists) {
+            return NextResponse.json({ success: false, message: `Field with name "${trimmedName}" already exists in this table.` }, { status: 409 });
+        }
+
+       
+        table.fields[fieldIndex].name = trimmedName;
+        if (type) {
+            table.fields[fieldIndex].type = type as FieldType;
+        }
+
+        await table.save();
+
+        return NextResponse.json({ 
+            success: true, 
+            data: table.fields[fieldIndex],
+            message: 'Field updated successfully' 
+        }, { status: 200 });
+
+    } catch (error: unknown) {
+        console.error('[API_TABLE_FIELDS_PUT]', error);
+        
+        let message = 'Server Error updating field';
+        let status = 500;
+        let errorDetails = {};
+
+        if (error instanceof MongooseError && error.name === 'ValidationError') {
+            message = error.message;
+            status = 400;
+            
+            errorDetails = (error as MongooseError & { errors: Record<string, unknown> }).errors;
+            return NextResponse.json({ success: false, message, errors: errorDetails }, { status });
+        } else if (error instanceof Error) {
+            message = error.message;
+        }
+
+        return NextResponse.json({ success: false, message }, { status });
+    }
+}
+
+
+export async function DELETE(request: NextRequest, context: RequestContext) {
+    const { tableId } = context.params;
+    await dbConnect();
+
+    if (!mongoose.Types.ObjectId.isValid(tableId)) {
+        return NextResponse.json({ success: false, message: 'Invalid Table ID format' }, { status: 400 });
+    }
+
+    try {
+        const { searchParams } = new URL(request.url);
+        const fieldId = searchParams.get('fieldId');
+
+        if (!fieldId || !mongoose.Types.ObjectId.isValid(fieldId)) {
+            return NextResponse.json({ success: false, message: 'Valid field ID is required' }, { status: 400 });
+        }
+
+        const table = await Table.findById(tableId);
+        if (!table) {
+            return NextResponse.json({ success: false, message: 'Table not found' }, { status: 404 });
+        }
+
+     
+        const fieldIndex = table.fields.findIndex(
+            field => String(field._id) === fieldId
+        );
+
+        if (fieldIndex === -1) {
+            return NextResponse.json({ success: false, message: 'Field not found' }, { status: 404 });
+        }
+
+       
+        const deletedFieldName = table.fields[fieldIndex].name;
+
+        
+        table.fields.splice(fieldIndex, 1);
+        await table.save();
+
+
+        return NextResponse.json({ 
+            success: true, 
+            message: 'Field deleted successfully',
+            data: { fieldId, fieldName: deletedFieldName }
+        }, { status: 200 });
+
+    } catch (error: unknown) {
+        console.error('[API_TABLE_FIELDS_DELETE]', error);
+        
+        const status = 500;
+        let message = 'Server Error deleting field';
+
+        if (error instanceof Error) {
             message = error.message;
         }
 

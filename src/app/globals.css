@@ -3,6 +3,9 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  --foreground-rgb: 0, 0, 0;
+  --background-start-rgb: 214, 219, 220;
+  --background-end-rgb: 255, 255, 255;
 }
 
 @theme inline {
@@ -23,4 +26,136 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+}
+
+/* Spreadsheet styles */
+.spreadsheet-container {
+  position: relative;
+}
+
+.spreadsheet-table {
+  border-collapse: collapse;
+  table-layout: fixed;
+  width: 100%;
+}
+
+.spreadsheet-table th,
+.spreadsheet-table td {
+  position: relative;
+  height: 36px;
+  padding: 8px 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  border-right: 1px solid #f0f0f0;
+}
+
+/* Set minimum widths for different column types */
+.spreadsheet-table th.column-text,
+.spreadsheet-table td.column-text {
+  min-width: 200px;
+  max-width: 300px;
+  width: auto;
+}
+
+.spreadsheet-table th.column-number,
+.spreadsheet-table td.column-number {
+  min-width: 100px;
+}
+
+.spreadsheet-table th.column-email,
+.spreadsheet-table td.column-email {
+  min-width: 180px;
+}
+
+.spreadsheet-table th.column-time,
+.spreadsheet-table td.column-time {
+  min-width: 100px;
+}
+
+.spreadsheet-table th.column-actions,
+.spreadsheet-table td.column-actions {
+  min-width: 80px;
+  width: 80px;
+}
+
+/* Ensure the checkbox column has a fixed width */
+.spreadsheet-table th.column-checkbox,
+.spreadsheet-table td.column-checkbox {
+  width: 50px;
+  min-width: 50px;
+  max-width: 50px;
+  z-index: 20;
+  position: sticky;
+  left: 0;
+  background-color: #f9fafb;
+  box-shadow: 1px 0 3px rgba(0, 0, 0, 0.06);
+}
+
+/* Ensure the row number column has a fixed width */
+.spreadsheet-table th.column-row-number,
+.spreadsheet-table td.column-row-number {
+  width: 40px;
+  min-width: 40px;
+  max-width: 40px;
+  text-align: center;
+  border-right: 2px solid #e5e7eb;
+  background-color: #f9fafb;
+  z-index: 15;
+  position: sticky;
+  left: 50px;  /* Position after checkbox column */
+  box-shadow: 1px 0 3px rgba(0, 0, 0, 0.06);
+}
+
+.spreadsheet-table tr:hover {
+  background-color: #f8fafc;
+}
+
+.spreadsheet-table .editable-cell {
+  cursor: cell;
+  display: block;
+  width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.spreadsheet-table input {
+  padding: 2px 4px;
+  outline: none;
+  box-shadow: none;
+  width: 100%;
+}
+
+.spreadsheet-table td.cell-selected {
+  background-color: rgba(59, 130, 246, 0.1);
+}
+
+.spreadsheet-table td.cell-editing {
+  background-color: rgba(59, 130, 246, 0.2);
+  outline: 2px solid #3b82f6;
+}
+
+.spreadsheet-table .cell-error {
+  border-bottom: 2px solid #ef4444;
+}
+
+.spreadsheet-table .sticky {
+  z-index: 10;
+  background-color: #f9fafb;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+/* Header row */
+.spreadsheet-table thead th {
+  position: sticky;
+  top: 0;
+  background-color: #f9fafb;
+  font-weight: 600;
+  z-index: 20;
+}
+
+/* Selection */
+.cell-in-selection {
+  background-color: rgba(59, 130, 246, 0.1);
 }

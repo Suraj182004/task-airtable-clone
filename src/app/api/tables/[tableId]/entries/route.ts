@@ -180,4 +180,129 @@ export async function POST(request: NextRequest, context: RequestContext) {
 
         return NextResponse.json({ success: false, message }, { status });
     }
+}
+
+// Add PUT method to update an entry
+export async function PUT(request: NextRequest, context: RequestContext) {
+    const { tableId } = context.params;
+    await dbConnect();
+
+    if (!mongoose.Types.ObjectId.isValid(tableId)) {
+        return NextResponse.json({ success: false, message: 'Invalid Table ID format' }, { status: 400 });
+    }
+
+    try {
+        const body = await request.json();
+        const { entryId, data } = body;
+
+        if (!entryId || !mongoose.Types.ObjectId.isValid(entryId)) {
+            return NextResponse.json({ success: false, message: 'Valid entry ID is required' }, { status: 400 });
+        }
+
+        if (!data || typeof data !== 'object' || Array.isArray(data)) {
+            return NextResponse.json({ success: false, message: 'Entry data must be an object' }, { status: 400 });
+        }
+
+       
+        const table = await Table.findById(tableId).select('fields');
+        if (!table) {
+            return NextResponse.json({ success: false, message: 'Table not found' }, { status: 404 });
+        }
+
+        
+        const entry = await Entry.findOne({ _id: entryId, tableId });
+        if (!entry) {
+            return NextResponse.json({ success: false, message: 'Entry not found' }, { status: 404 });
+        }
+
+        const { isValid, errors, validatedData } = validateData(data, table.fields);
+
+        if (!isValid) {
+            return NextResponse.json({ success: false, message: 'Data validation failed', errors }, { status: 400 });
+        }
+
+        
+        const dataMap = new Map<string, unknown>();
+        Object.entries(validatedData).forEach(([key, value]) => {
+            dataMap.set(key, value);
+        });
+
+        entry.data = dataMap;
+        entry.updatedAt = new Date();
+        await entry.save();
+
+        return NextResponse.json({ 
+            success: true, 
+            data: entry,
+            message: 'Entry updated successfully' 
+        }, { status: 200 });
+
+    } catch (error: unknown) {
+        console.error('[API_TABLE_ENTRIES_PUT]', error);
+        
+        let message = 'Server Error updating entry';
+        const status = 500;
+        let errorDetails = {};
+
+        if (error instanceof MongooseError && error.name === 'ValidationError') {
+            message = error.message;
+          
+            errorDetails = (error as MongooseError & { errors: Record<string, unknown> }).errors;
+            return NextResponse.json({ success: false, message, errors: errorDetails }, { status: 400 });
+        } else if (error instanceof Error) {
+            message = error.message;
+        }
+
+        return NextResponse.json({ success: false, message }, { status });
+    }
+}
+
+
+export async function DELETE(request: NextRequest, context: RequestContext) {
+    const { tableId } = context.params;
+    await dbConnect();
+
+    if (!mongoose.Types.ObjectId.isValid(tableId)) {
+        return NextResponse.json({ success: false, message: 'Invalid Table ID format' }, { status: 400 });
+    }
+
+    try {
+        const { searchParams } = new URL(request.url);
+        const entryId = searchParams.get('entryId');
+
+        if (!entryId || !mongoose.Types.ObjectId.isValid(entryId)) {
+            return NextResponse.json({ success: false, message: 'Valid entry ID is required' }, { status: 400 });
+        }
+
+      
+        const tableExists = await Table.findById(tableId).select('_id');
+        if (!tableExists) {
+            return NextResponse.json({ success: false, message: 'Table not found' }, { status: 404 });
+        }
+
+    
+        const deletedEntry = await Entry.findOneAndDelete({ _id: entryId, tableId });
+        
+        if (!deletedEntry) {
+            return NextResponse.json({ success: false, message: 'Entry not found' }, { status: 404 });
+        }
+
+        return NextResponse.json({ 
+            success: true, 
+            message: 'Entry deleted successfully',
+            data: { entryId }
+        }, { status: 200 });
+
+    } catch (error: unknown) {
+        console.error('[API_TABLE_ENTRIES_DELETE]', error);
+        
+        let message = 'Server Error deleting entry';
+        const status = 500;
+
+        if (error instanceof Error) {
+            message = error.message;
+        }
+
+        return NextResponse.json({ success: false, message }, { status });
+    }
 } 
