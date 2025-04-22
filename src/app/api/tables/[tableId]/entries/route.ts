@@ -100,9 +100,9 @@ function validateData(data: Record<string, unknown>, fields: IField[]): { isVali
 
 export async function GET(
     request: NextRequest,
-    { params }: { params: { tableId: string } }
+    context: { params: { tableId: string } }
 ): Promise<NextResponse> {
-    const { tableId } = params;
+    const { tableId } = context.params;
     await dbConnect();
 
     if (!mongoose.Types.ObjectId.isValid(tableId)) {
@@ -129,9 +129,9 @@ export async function GET(
 
 export async function POST(
     request: NextRequest,
-    { params }: { params: { tableId: string } }
+    context: { params: { tableId: string } }
 ): Promise<NextResponse> {
-    const { tableId } = params;
+    const { tableId } = context.params;
     await dbConnect();
 
     if (!mongoose.Types.ObjectId.isValid(tableId)) {
@@ -193,9 +193,9 @@ export async function POST(
 // Add PUT method to update an entry
 export async function PUT(
     request: NextRequest,
-    { params }: { params: { tableId: string } }
+    context: { params: { tableId: string } }
 ): Promise<NextResponse> {
-    const { tableId } = params;
+    const { tableId } = context.params;
     await dbConnect();
 
     if (!mongoose.Types.ObjectId.isValid(tableId)) {
@@ -270,9 +270,9 @@ export async function PUT(
 
 export async function DELETE(
     request: NextRequest,
-    { params }: { params: { tableId: string } }
+    context: { params: { tableId: string } }
 ): Promise<NextResponse> {
-    const { tableId } = params;
+    const { tableId } = context.params;
     await dbConnect();
 
     if (!mongoose.Types.ObjectId.isValid(tableId)) {
