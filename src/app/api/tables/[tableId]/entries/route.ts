@@ -5,12 +5,12 @@ import Table from '@/models/Table';
 import Entry from '@/models/Entry';
 import { IField } from '@/models/Field';
 
-interface RequestContext {
+// Replace custom interface with the proper Next.js params type
+type ParamsType = {
     params: {
         tableId: string;
     }
 }
-
 
 function validateData(data: Record<string, unknown>, fields: IField[]): { isValid: boolean; errors: Record<string, string>; validatedData: Record<string, unknown> } {
     const errors: Record<string, string> = {};
@@ -105,9 +105,11 @@ function validateData(data: Record<string, unknown>, fields: IField[]): { isVali
     return { isValid, errors, validatedData };
 }
 
-
-export async function GET(request: NextRequest, context: RequestContext): Promise<NextResponse> {
-    const { tableId } = context.params;
+export async function GET(
+    request: NextRequest,
+    { params }: ParamsType
+): Promise<NextResponse> {
+    const { tableId } = params;
     await dbConnect();
 
     if (!mongoose.Types.ObjectId.isValid(tableId)) {
@@ -132,9 +134,11 @@ export async function GET(request: NextRequest, context: RequestContext): Promis
     }
 }
 
-
-export async function POST(request: NextRequest, context: RequestContext): Promise<NextResponse> {
-    const { tableId } = context.params;
+export async function POST(
+    request: NextRequest,
+    { params }: ParamsType
+): Promise<NextResponse> {
+    const { tableId } = params;
     await dbConnect();
 
     if (!mongoose.Types.ObjectId.isValid(tableId)) {
@@ -194,8 +198,11 @@ export async function POST(request: NextRequest, context: RequestContext): Promi
 }
 
 // Add PUT method to update an entry
-export async function PUT(request: NextRequest, context: RequestContext): Promise<NextResponse> {
-    const { tableId } = context.params;
+export async function PUT(
+    request: NextRequest,
+    { params }: ParamsType
+): Promise<NextResponse> {
+    const { tableId } = params;
     await dbConnect();
 
     if (!mongoose.Types.ObjectId.isValid(tableId)) {
@@ -268,9 +275,11 @@ export async function PUT(request: NextRequest, context: RequestContext): Promis
     }
 }
 
-
-export async function DELETE(request: NextRequest, context: RequestContext): Promise<NextResponse> {
-    const { tableId } = context.params;
+export async function DELETE(
+    request: NextRequest,
+    { params }: ParamsType
+): Promise<NextResponse> {
+    const { tableId } = params;
     await dbConnect();
 
     if (!mongoose.Types.ObjectId.isValid(tableId)) {
