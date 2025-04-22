@@ -1,18 +1,14 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import mongoose, { MongooseError } from 'mongoose';
 import dbConnect from '@/lib/dbConnect';
 import Table from '@/models/Table';
 import { validFieldTypes, FieldType, IField } from '@/models/Field';
 
-interface RequestContext {
-    params: {
-        tableId: string;
-    }
-}
-
-
-export async function GET(_request: NextRequest, context: RequestContext) {
-    const { tableId } = context.params;
+export async function GET(
+    request: Request,
+    { params }: { params: Promise<{ tableId: string }> }
+): Promise<NextResponse> {
+    const { tableId } = await params;
     await dbConnect();
 
     if (!mongoose.Types.ObjectId.isValid(tableId)) {
@@ -35,8 +31,11 @@ export async function GET(_request: NextRequest, context: RequestContext) {
     }
 }
 
-export async function POST(request: NextRequest, context: RequestContext) {
-    const { tableId } = context.params;
+export async function POST(
+    request: Request,
+    { params }: { params: Promise<{ tableId: string }> }
+): Promise<NextResponse> {
+    const { tableId } = await params;
     await dbConnect();
 
     if (!mongoose.Types.ObjectId.isValid(tableId)) {
@@ -137,8 +136,11 @@ export async function POST(request: NextRequest, context: RequestContext) {
 }
 
 
-export async function PUT(request: NextRequest, context: RequestContext) {
-    const { tableId } = context.params;
+export async function PUT(
+    request: Request,
+    { params }: { params: Promise<{ tableId: string }> }
+): Promise<NextResponse> {
+    const { tableId } = await params;
     await dbConnect();
 
     if (!mongoose.Types.ObjectId.isValid(tableId)) {
@@ -247,8 +249,11 @@ export async function PUT(request: NextRequest, context: RequestContext) {
 }
 
 
-export async function DELETE(request: NextRequest, context: RequestContext) {
-    const { tableId } = context.params;
+export async function DELETE(
+    request: Request,
+    { params }: { params: Promise<{ tableId: string }> }
+): Promise<NextResponse> {
+    const { tableId } = await params;
     await dbConnect();
 
     if (!mongoose.Types.ObjectId.isValid(tableId)) {
@@ -256,11 +261,11 @@ export async function DELETE(request: NextRequest, context: RequestContext) {
     }
 
     try {
-        const { searchParams } = new URL(request.url);
-        const fieldId = searchParams.get('fieldId');
+        const url = new URL(request.url);
+        const fieldId = url.searchParams.get('fieldId');
 
         if (!fieldId || !mongoose.Types.ObjectId.isValid(fieldId)) {
-            return NextResponse.json({ success: false, message: 'Valid field ID is required' }, { status: 400 });
+            return NextResponse.json({ success: false, message: 'Valid field ID is required as a query parameter' }, { status: 400 });
         }
 
         const table = await Table.findById(tableId);
@@ -278,7 +283,7 @@ export async function DELETE(request: NextRequest, context: RequestContext) {
         }
 
        
-        const deletedFieldName = table.fields[fieldIndex].name;
+        const fieldName = table.fields[fieldIndex].name;
 
         
         table.fields.splice(fieldIndex, 1);
@@ -288,7 +293,7 @@ export async function DELETE(request: NextRequest, context: RequestContext) {
         return NextResponse.json({ 
             success: true, 
             message: 'Field deleted successfully',
-            data: { fieldId, fieldName: deletedFieldName }
+            data: { fieldId, fieldName }
         }, { status: 200 });
 
     } catch (error: unknown) {

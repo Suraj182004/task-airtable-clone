@@ -1,18 +1,15 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import mongoose from 'mongoose';
 import dbConnect from '@/lib/dbConnect';
 import Table from '@/models/Table';
 import Entry from '@/models/Entry';
 
-interface RequestContext {
-    params: {
-        tableId: string;
-    }
-}
-
 // GET /api/tables/[tableId] - Fetches a specific table by ID
-export async function GET(_request: NextRequest, context: RequestContext) {
-    const { tableId } = context.params;
+export async function GET(
+    request: Request,
+    { params }: { params: Promise<{ tableId: string }> }
+): Promise<NextResponse> {
+    const { tableId } = await params;
     await dbConnect();
 
     if (!mongoose.Types.ObjectId.isValid(tableId)) {
@@ -36,8 +33,11 @@ export async function GET(_request: NextRequest, context: RequestContext) {
 }
 
 // DELETE /api/tables/[tableId] - Deletes a specific table and all its entries
-export async function DELETE(_request: NextRequest, context: RequestContext) {
-    const { tableId } = context.params;
+export async function DELETE(
+    request: Request,
+    { params }: { params: Promise<{ tableId: string }> }
+): Promise<NextResponse> {
+    const { tableId } = await params;
     await dbConnect();
 
     if (!mongoose.Types.ObjectId.isValid(tableId)) {

@@ -1,10 +1,10 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { MongooseError } from 'mongoose';
 import dbConnect from '@/lib/dbConnect';
 import Table from '@/models/Table';
 
 
-export async function GET() {
+export async function GET(): Promise<NextResponse> {
  
   await dbConnect();
   try {
@@ -21,7 +21,7 @@ export async function GET() {
 }
 
 
-export async function POST(request: NextRequest) {
+export async function POST(request: Request): Promise<NextResponse> {
   await dbConnect();
   try {
     const body = await request.json();
