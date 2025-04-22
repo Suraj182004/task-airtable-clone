@@ -106,7 +106,7 @@ function validateData(data: Record<string, unknown>, fields: IField[]): { isVali
 }
 
 
-export async function GET(request: NextRequest, context: RequestContext) {
+export async function GET(request: NextRequest, context: RequestContext): Promise<NextResponse> {
     const { tableId } = context.params;
     await dbConnect();
 
@@ -133,7 +133,7 @@ export async function GET(request: NextRequest, context: RequestContext) {
 }
 
 
-export async function POST(request: NextRequest, context: RequestContext) {
+export async function POST(request: NextRequest, context: RequestContext): Promise<NextResponse> {
     const { tableId } = context.params;
     await dbConnect();
 
@@ -194,7 +194,7 @@ export async function POST(request: NextRequest, context: RequestContext) {
 }
 
 // Add PUT method to update an entry
-export async function PUT(request: NextRequest, context: RequestContext) {
+export async function PUT(request: NextRequest, context: RequestContext): Promise<NextResponse> {
     const { tableId } = context.params;
     await dbConnect();
 
@@ -269,7 +269,7 @@ export async function PUT(request: NextRequest, context: RequestContext) {
 }
 
 
-export async function DELETE(request: NextRequest, context: RequestContext) {
+export async function DELETE(request: NextRequest, context: RequestContext): Promise<NextResponse> {
     const { tableId } = context.params;
     await dbConnect();
 
