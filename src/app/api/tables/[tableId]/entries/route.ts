@@ -78,6 +78,17 @@ function validateData(data: Record<string, unknown>, fields: IField[]): { isVali
                      parsedValue = value.trim(); 
                 }
                 break;
+            case 'multiple_choice':
+                if (typeof value !== 'string') {
+                    errors[fieldName] = 'Must be a string value.';
+                    fieldIsValid = false;
+                } else if (field.options && Array.isArray(field.options) && !field.options.includes(value)) {
+                    errors[fieldName] = `Value must be one of the valid options: ${field.options.join(', ')}.`;
+                    fieldIsValid = false;
+                } else {
+                    parsedValue = value.trim();
+                }
+                break;
             default:
                 errors[fieldName] = `Unknown field type: ${fieldType}`;
                 fieldIsValid = false;

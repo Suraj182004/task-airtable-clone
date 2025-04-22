@@ -52,10 +52,9 @@ export async function POST(request: NextRequest) {
         if (error.name === 'ValidationError') {
             message = error.message;
             status = 400;
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            errorDetails = (error as any).errors;
+            errorDetails = (error as MongooseError & { errors: Record<string, unknown> }).errors;
             return NextResponse.json({ success: false, message, errors: errorDetails }, { status });
-        } else if ((error as any).code === 11000) {
+        } else if ((error as MongooseError & { code?: number }).code === 11000) {
             message = `Table name must be unique. A table with the provided name likely already exists.`;
             status = 409;
         }

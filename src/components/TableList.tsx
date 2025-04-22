@@ -14,8 +14,10 @@ export default function TableList() {
   const [newTableName, setNewTableName] = useState('');
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
-  
   useEffect(() => {
     const fetchTables = async () => {
       try {
@@ -58,7 +60,6 @@ export default function TableList() {
       const result = await response.json();
       
       if (result.success) {
-        
         setTables([...tables, result.data]);
         setNewTableName(''); 
       } else {
@@ -68,6 +69,31 @@ export default function TableList() {
       setCreateError(err instanceof Error ? err.message : 'An unknown error occurred');
     } finally {
       setCreating(false);
+    }
+  };
+
+  const handleDeleteTable = async (tableId: string) => {
+    setDeleting(true);
+    setDeleteError(null);
+    
+    try {
+      const response = await fetch(`/api/tables/${tableId}`, {
+        method: 'DELETE',
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        // Remove the table from the state
+        setTables(tables.filter(table => table._id !== tableId));
+        setShowDeleteConfirm(null);
+      } else {
+        throw new Error(result.message || 'Failed to delete table');
+      }
+    } catch (err) {
+      setDeleteError(err instanceof Error ? err.message : 'An unknown error occurred');
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -131,9 +157,9 @@ export default function TableList() {
         <div className="bg-white shadow overflow-hidden sm:rounded-md">
           <ul className="divide-y divide-gray-200">
             {tables.map((table) => (
-              <li key={table._id}>
-                <Link href={`/tables/${table._id}`} className="block hover:bg-gray-50">
-                  <div className="px-4 py-4 sm:px-6">
+              <li key={table._id} className="hover:bg-gray-50">
+                <div className="px-4 py-4 sm:px-6 flex items-center justify-between">
+                  <Link href={`/tables/${table._id}`} className="flex-1">
                     <div className="flex items-center justify-between">
                       <div className="text-sm font-medium text-blue-600 truncate">
                         {table.name}
@@ -151,11 +177,54 @@ export default function TableList() {
                         </div>
                       </div>
                     </div>
+                  </Link>
+                  <div className="ml-4">
+                    <button
+                      onClick={() => setShowDeleteConfirm(table._id)}
+                      className="px-3 py-2 border border-transparent text-xs rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                    >
+                      Delete
+                    </button>
                   </div>
-                </Link>
+                </div>
               </li>
             ))}
           </ul>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-sm mx-auto">
+            <h3 className="text-lg font-medium text-gray-900 mb-4">Confirm Deletion</h3>
+            <p className="text-sm text-gray-500 mb-4">
+              Are you sure you want to delete this table? This action will also delete all entries in this table and cannot be undone.
+            </p>
+            
+            {deleteError && (
+              <div className="mb-4 rounded-md bg-red-50 p-3">
+                <p className="text-sm text-red-700">{deleteError}</p>
+              </div>
+            )}
+            
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={() => setShowDeleteConfirm(null)}
+                className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                disabled={deleting}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => handleDeleteTable(showDeleteConfirm)}
+                className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50"
+                disabled={deleting}
+              >
+                {deleting ? 'Deleting...' : 'Delete Table'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

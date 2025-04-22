@@ -4,7 +4,8 @@ import { useState, useEffect, useRef, KeyboardEvent } from 'react';
 interface Field {
   _id: string;
   name: string;
-  type: 'text' | 'number' | 'email' | 'time';
+  type: 'text' | 'number' | 'email' | 'time' | 'multiple_choice';
+  options?: string[]; // For multiple_choice field type
 }
 
 interface Entry {
@@ -58,6 +59,7 @@ export default function EntryManager({
   
   const cellRefs = useRef<Record<string, HTMLTableCellElement | null>>({});
   const editInputRef = useRef<HTMLInputElement | null>(null);
+  const editSelectRef = useRef<HTMLSelectElement | null>(null);
 
   // Initialize form data when fields change
   useEffect(() => {
@@ -68,12 +70,19 @@ export default function EntryManager({
     setFormData(newFormData);
   }, [fields]);
 
-  // Focus the edit input when a cell is being edited
+  // Focus the appropriate input when a cell is being edited
   useEffect(() => {
-    if (editingCell && editInputRef.current) {
-      editInputRef.current.focus();
+    if (editingCell) {
+      const field = fields.find(f => f._id === editingCell.fieldId);
+      if (field && field.type === 'multiple_choice') {
+        if (editSelectRef.current) {
+          editSelectRef.current.focus();
+        }
+      } else if (editInputRef.current) {
+        editInputRef.current.focus();
+      }
     }
-  }, [editingCell]);
+  }, [editingCell, fields]);
 
   // Reset form when fields change
   const resetForm = () => {
@@ -362,19 +371,17 @@ export default function EntryManager({
   };
 
   
-  const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+  const handleKeyDown = (e: KeyboardEvent<HTMLInputElement | HTMLSelectElement>) => {
     if (!editingCell) return;
     
     const { rowIndex, colIndex } = editingCell;
     
     if (e.key === 'Enter') {
       if (e.shiftKey) {
-        
         e.preventDefault();
         saveEditedCell();
         navigateToCell(rowIndex - 1, colIndex);
       } else {
-        
         e.preventDefault();
         saveEditedCell();
         navigateToCell(rowIndex + 1, colIndex);
@@ -383,10 +390,8 @@ export default function EntryManager({
       e.preventDefault();
       saveEditedCell();
       if (e.shiftKey) {
-        
         navigateToCell(rowIndex, colIndex - 1);
       } else {
-       
         navigateToCell(rowIndex, colIndex + 1);
       }
     } else if (e.key === 'Escape') {
@@ -405,18 +410,16 @@ export default function EntryManager({
         navigateToCell(rowIndex + 1, colIndex);
       }
     } else if (e.key === 'ArrowLeft') {
-      
-      if (editInputRef.current && editInputRef.current.selectionStart === 0) {
+      // Only handle for input elements with selectionStart
+      if (e.currentTarget instanceof HTMLInputElement && e.currentTarget.selectionStart === 0) {
         e.preventDefault();
         saveEditedCell();
         navigateToCell(rowIndex, colIndex - 1);
       }
     } else if (e.key === 'ArrowRight') {
-
-      if (
-        editInputRef.current && 
-        editInputRef.current.selectionEnd === editInputRef.current.value.length
-      ) {
+      // Only handle for input elements with selectionEnd
+      if (e.currentTarget instanceof HTMLInputElement && 
+          e.currentTarget.selectionEnd === e.currentTarget.value.length) {
         e.preventDefault();
         saveEditedCell();
         navigateToCell(rowIndex, colIndex + 1);
@@ -480,7 +483,6 @@ export default function EntryManager({
   };
 
   const navigateToCell = (rowIndex: number, colIndex: number) => {
-
     if (
       rowIndex < 0 || 
       rowIndex >= entries.length || 
@@ -622,6 +624,26 @@ export default function EntryManager({
                         onChange={(e) => handleFieldChange(field.name, e.target.value)}
                         disabled={adding}
                       />
+                    )}
+                    {field.type === 'multiple_choice' && field.options && field.options.length > 0 && (
+                      <select
+                        id={`field-${field._id}`}
+                        className={`mt-1 block w-full rounded-md shadow-sm ${
+                          validationErrors[field.name] 
+                            ? 'border-red-300 focus:border-red-500 focus:ring-red-500' 
+                            : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
+                        }`}
+                        value={formData[field.name] as string || ''}
+                        onChange={(e) => handleFieldChange(field.name, e.target.value)}
+                        disabled={adding}
+                      >
+                        <option value="">Select an option</option>
+                        {field.options.map((option, idx) => (
+                          <option key={idx} value={option}>
+                            {option}
+                          </option>
+                        ))}
+                      </select>
                     )}
                     {validationErrors[field.name] && (
                       <p className="mt-1 text-sm text-red-600">{validationErrors[field.name]}</p>
@@ -805,17 +827,37 @@ export default function EntryManager({
                           >
                             {isEditing ? (
                               <div className="relative">
-                                <input
-                                  ref={editInputRef}
-                                  type={field.type === 'number' ? 'number' : field.type}
-                                  value={editValue}
-                                  onChange={(e) => setEditValue(e.target.value)}
-                                  onKeyDown={handleKeyDown}
-                                  onBlur={saveEditedCell}
-                                  className="w-full p-0 border-0 focus:ring-2 focus:ring-blue-500 bg-transparent"
-                                  disabled={updating}
-                                  autoFocus
-                                />
+                                {field.type === 'multiple_choice' && field.options && field.options.length > 0 ? (
+                                  <select
+                                    ref={editSelectRef}
+                                    value={editValue}
+                                    onChange={(e) => setEditValue(e.target.value)}
+                                    onKeyDown={handleKeyDown}
+                                    onBlur={saveEditedCell}
+                                    className="w-full p-0 border-0 focus:ring-2 focus:ring-blue-500 bg-transparent"
+                                    disabled={updating}
+                                    autoFocus
+                                  >
+                                    <option value="">Select an option</option>
+                                    {field.options.map((option, idx) => (
+                                      <option key={idx} value={option}>
+                                        {option}
+                                      </option>
+                                    ))}
+                                  </select>
+                                ) : (
+                                  <input
+                                    ref={editInputRef}
+                                    type={field.type === 'number' ? 'number' : field.type}
+                                    value={editValue}
+                                    onChange={(e) => setEditValue(e.target.value)}
+                                    onKeyDown={handleKeyDown}
+                                    onBlur={saveEditedCell}
+                                    className="w-full p-0 border-0 focus:ring-2 focus:ring-blue-500 bg-transparent"
+                                    disabled={updating}
+                                    autoFocus
+                                  />
+                                )}
                                 {updateError && (
                                   <div className="absolute top-full left-0 mt-1 z-10 w-48 text-xs bg-red-100 text-red-800 p-1 rounded">
                                     {updateError}

@@ -10,7 +10,8 @@ import EntryManager from '@/components/EntryManager';
 interface Field {
   _id: string;
   name: string;
-  type: 'text' | 'number' | 'email' | 'time';
+  type: 'text' | 'number' | 'email' | 'time' | 'multiple_choice';
+  options?: string[]; // For multiple_choice field type
 }
 
 interface Table {
@@ -100,6 +101,31 @@ export default function TablePage() {
 
   const handleFieldAdded = (newField: Field) => {
     setFields(prevFields => [...prevFields, newField]);
+  };
+
+  const handleFieldUpdated = (updatedField: Field) => {
+    setFields(prevFields => 
+      prevFields.map(field => 
+        field._id === updatedField._id ? updatedField : field
+      )
+    );
+  };
+
+  const handleFieldDeleted = (fieldId: string, fieldName: string) => {
+    // Remove the field from fields array
+    setFields(prevFields => 
+      prevFields.filter(field => field._id !== fieldId)
+    );
+    
+    // Also update entries to remove the deleted field's data
+    setEntries(prevEntries => 
+      prevEntries.map(entry => {
+        // Create a new entry object without the deleted field
+        const newData = { ...entry.data };
+        delete newData[fieldName];
+        return { ...entry, data: newData };
+      })
+    );
   };
 
   const handleEntryAdded = (newEntry: Entry) => {
@@ -216,6 +242,8 @@ export default function TablePage() {
               tableId={tableId} 
               fields={fields} 
               onFieldAdded={handleFieldAdded} 
+              onFieldUpdated={handleFieldUpdated}
+              onFieldDeleted={handleFieldDeleted}
             />
           )}
         </div>

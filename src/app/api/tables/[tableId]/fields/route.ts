@@ -45,13 +45,31 @@ export async function POST(request: NextRequest, context: RequestContext) {
 
     try {
         const body = await request.json();
-        const { name, type } = body;
+        const { name, type, options } = body;
 
         if (!name || typeof name !== 'string' || name.trim() === '') {
             return NextResponse.json({ success: false, message: 'Field name is required and must be a non-empty string.' }, { status: 400 });
         }
         if (!type || typeof type !== 'string' || !validFieldTypes.includes(type as FieldType)) {
             return NextResponse.json({ success: false, message: `Field type is required and must be one of: ${validFieldTypes.join(', ')}.` }, { status: 400 });
+        }
+
+        // Validate options for multiple_choice type
+        if (type === 'multiple_choice') {
+            if (!options || !Array.isArray(options) || options.length === 0) {
+                return NextResponse.json({ 
+                    success: false, 
+                    message: 'Multiple choice fields must have at least one option.' 
+                }, { status: 400 });
+            }
+            
+            // Ensure all options are strings
+            if (!options.every(opt => typeof opt === 'string' && opt.trim() !== '')) {
+                return NextResponse.json({ 
+                    success: false, 
+                    message: 'All options must be non-empty strings.' 
+                }, { status: 400 });
+            }
         }
 
         const trimmedName = name.trim();
@@ -70,10 +88,22 @@ export async function POST(request: NextRequest, context: RequestContext) {
         }
 
         
-        const newField = {
+        // Define a proper type for the new field
+        interface NewField {
+            name: string;
+            type: FieldType;
+            options?: string[];
+        }
+        
+        const newField: NewField = {
             name: trimmedName,
             type: type as FieldType,
         };
+
+        // Add options if it's a multiple_choice field
+        if (type === 'multiple_choice' && options) {
+            newField.options = options;
+        }
 
        
         table.fields.push(newField as unknown as IField);
@@ -117,7 +147,7 @@ export async function PUT(request: NextRequest, context: RequestContext) {
 
     try {
         const body = await request.json();
-        const { fieldId, name, type } = body;
+        const { fieldId, name, type, options } = body;
 
         if (!fieldId || !mongoose.Types.ObjectId.isValid(fieldId)) {
             return NextResponse.json({ success: false, message: 'Valid field ID is required' }, { status: 400 });
@@ -127,8 +157,26 @@ export async function PUT(request: NextRequest, context: RequestContext) {
             return NextResponse.json({ success: false, message: 'Field name is required and must be a non-empty string.' }, { status: 400 });
         }
 
-        if (type && (typeof type !== 'string' || !validFieldTypes.includes(type as FieldType))) {
+        if (!type || typeof type !== 'string' || !validFieldTypes.includes(type as FieldType)) {
             return NextResponse.json({ success: false, message: `Field type must be one of: ${validFieldTypes.join(', ')}.` }, { status: 400 });
+        }
+
+        // Validate options for multiple_choice type
+        if (type === 'multiple_choice') {
+            if (!options || !Array.isArray(options) || options.length === 0) {
+                return NextResponse.json({ 
+                    success: false, 
+                    message: 'Multiple choice fields must have at least one option.' 
+                }, { status: 400 });
+            }
+            
+            // Ensure all options are strings
+            if (!options.every(opt => typeof opt === 'string' && opt.trim() !== '')) {
+                return NextResponse.json({ 
+                    success: false, 
+                    message: 'All options must be non-empty strings.' 
+                }, { status: 400 });
+            }
         }
 
         const trimmedName = name.trim();
@@ -158,8 +206,15 @@ export async function PUT(request: NextRequest, context: RequestContext) {
 
        
         table.fields[fieldIndex].name = trimmedName;
-        if (type) {
-            table.fields[fieldIndex].type = type as FieldType;
+        table.fields[fieldIndex].type = type as FieldType;
+        
+        // Update options if it's a multiple_choice field
+        if (type === 'multiple_choice' && options) {
+            table.fields[fieldIndex].options = options;
+        } else if (type !== 'multiple_choice') {
+            // For non-multiple_choice fields, set options to undefined or empty array
+            // Mongoose will handle this appropriately
+            table.fields[fieldIndex].options = undefined;
         }
 
         await table.save();
