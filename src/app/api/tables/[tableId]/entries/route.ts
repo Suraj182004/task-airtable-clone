@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import mongoose, { MongooseError } from 'mongoose';
 import dbConnect from '@/lib/dbConnect';
 import Table from '@/models/Table';
@@ -99,10 +99,10 @@ function validateData(data: Record<string, unknown>, fields: IField[]): { isVali
 }
 
 export async function GET(
-    request: NextRequest,
-    context: { params: { tableId: string } }
+    request: Request,
+    { params }: { params: Promise<{ tableId: string }> }
 ): Promise<NextResponse> {
-    const { tableId } = context.params;
+    const { tableId } = await params;
     await dbConnect();
 
     if (!mongoose.Types.ObjectId.isValid(tableId)) {
@@ -128,10 +128,10 @@ export async function GET(
 }
 
 export async function POST(
-    request: NextRequest,
-    context: { params: { tableId: string } }
+    request: Request,
+    { params }: { params: Promise<{ tableId: string }> }
 ): Promise<NextResponse> {
-    const { tableId } = context.params;
+    const { tableId } = await params;
     await dbConnect();
 
     if (!mongoose.Types.ObjectId.isValid(tableId)) {
@@ -192,10 +192,10 @@ export async function POST(
 
 // Add PUT method to update an entry
 export async function PUT(
-    request: NextRequest,
-    context: { params: { tableId: string } }
+    request: Request,
+    { params }: { params: Promise<{ tableId: string }> }
 ): Promise<NextResponse> {
-    const { tableId } = context.params;
+    const { tableId } = await params;
     await dbConnect();
 
     if (!mongoose.Types.ObjectId.isValid(tableId)) {
@@ -269,10 +269,10 @@ export async function PUT(
 }
 
 export async function DELETE(
-    request: NextRequest,
-    context: { params: { tableId: string } }
+    request: Request,
+    { params }: { params: Promise<{ tableId: string }> }
 ): Promise<NextResponse> {
-    const { tableId } = context.params;
+    const { tableId } = await params;
     await dbConnect();
 
     if (!mongoose.Types.ObjectId.isValid(tableId)) {
@@ -280,11 +280,11 @@ export async function DELETE(
     }
 
     try {
-        const { searchParams } = new URL(request.url);
-        const entryId = searchParams.get('entryId');
+        const url = new URL(request.url);
+        const entryId = url.searchParams.get('entryId');
 
         if (!entryId || !mongoose.Types.ObjectId.isValid(entryId)) {
-            return NextResponse.json({ success: false, message: 'Valid entry ID is required' }, { status: 400 });
+            return NextResponse.json({ success: false, message: 'Valid entry ID is required as a query parameter' }, { status: 400 });
         }
 
       
