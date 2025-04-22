@@ -5,13 +5,6 @@ import Table from '@/models/Table';
 import Entry from '@/models/Entry';
 import { IField } from '@/models/Field';
 
-// Replace custom interface with the proper Next.js params type
-type ParamsType = {
-    params: {
-        tableId: string;
-    }
-}
-
 function validateData(data: Record<string, unknown>, fields: IField[]): { isValid: boolean; errors: Record<string, string>; validatedData: Record<string, unknown> } {
     const errors: Record<string, string> = {};
     const validatedData: Record<string, unknown> = {}; 
@@ -107,7 +100,7 @@ function validateData(data: Record<string, unknown>, fields: IField[]): { isVali
 
 export async function GET(
     request: NextRequest,
-    { params }: ParamsType
+    { params }: { params: { tableId: string } }
 ): Promise<NextResponse> {
     const { tableId } = params;
     await dbConnect();
@@ -136,7 +129,7 @@ export async function GET(
 
 export async function POST(
     request: NextRequest,
-    { params }: ParamsType
+    { params }: { params: { tableId: string } }
 ): Promise<NextResponse> {
     const { tableId } = params;
     await dbConnect();
@@ -200,7 +193,7 @@ export async function POST(
 // Add PUT method to update an entry
 export async function PUT(
     request: NextRequest,
-    { params }: ParamsType
+    { params }: { params: { tableId: string } }
 ): Promise<NextResponse> {
     const { tableId } = params;
     await dbConnect();
@@ -277,7 +270,7 @@ export async function PUT(
 
 export async function DELETE(
     request: NextRequest,
-    { params }: ParamsType
+    { params }: { params: { tableId: string } }
 ): Promise<NextResponse> {
     const { tableId } = params;
     await dbConnect();
