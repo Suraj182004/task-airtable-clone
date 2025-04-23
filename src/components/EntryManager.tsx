@@ -1,10 +1,11 @@
 import { useState, useEffect, useRef, KeyboardEvent } from 'react';
+import React from 'react';
 
 // TypeScript interfaces
 interface Field {
   _id: string;
   name: string;
-  type: 'text' | 'number' | 'email' | 'time' | 'multiple_choice';
+  type: 'text' | 'number' | 'email' | 'time' | 'multiple_choice' | 'website' | 'date';
   options?: string[]; // For multiple_choice field type
 }
 
@@ -115,12 +116,12 @@ export default function EntryManager({
   const handleAddEntry = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Basic client-side validation
+    // Client-side validation (optional enhancement)
     const errors: Record<string, string> = {};
     let isValid = true;
     
     fields.forEach(field => {
-      const value = formData[field.name];
+      const value = formData[field.name] as string | undefined;
       
       if (field.type === 'email' && value && typeof value === 'string') {
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -144,6 +145,24 @@ export default function EntryManager({
           isValid = false;
         }
       }
+      
+      // Add basic validation for website (optional)
+      if (field.type === 'website' && value) {
+        try {
+          new URL(value);
+        } catch {
+          errors[field.name] = 'Must be a valid URL';
+          isValid = false;
+        }
+      }
+      
+      // Add basic validation for date (optional)
+      if (field.type === 'date' && value) {
+         if (isNaN(Date.parse(value))) {
+           errors[field.name] = 'Must be a valid date';
+           isValid = false;
+         }
+      }
     });
     
     if (!isValid) {
@@ -155,8 +174,9 @@ export default function EntryManager({
     setError(null);
     setValidationErrors({});
     
+    // API call handles primary validation
     try {
-      const response = await fetch(`/api/tables/${tableId}/entries`, {
+       const response = await fetch(`/api/tables/${tableId}/entries`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -267,7 +287,26 @@ export default function EntryManager({
       rowIndex,
       colIndex
     });
-    setEditValue(value === null || value === undefined ? '' : String(value));
+    // Format date for input type="date"
+    if (field.type === 'date' && value) {
+      try {
+        // Assuming value is stored as ISO string or Date object
+        const dateObj = new Date(value as string);
+        if (!isNaN(dateObj.getTime())) {
+          // Format as YYYY-MM-DD
+          const year = dateObj.getFullYear();
+          const month = (dateObj.getMonth() + 1).toString().padStart(2, '0');
+          const day = dateObj.getDate().toString().padStart(2, '0');
+          setEditValue(`${year}-${month}-${day}`);
+        } else {
+           setEditValue(''); // Handle invalid date from data
+        }
+      } catch {
+         setEditValue(''); // Handle parsing error
+      }
+    } else {
+      setEditValue(value === null || value === undefined ? '' : String(value));
+    }
   };
 
   // Cancel editing
@@ -285,23 +324,20 @@ export default function EntryManager({
     setUpdateError(null);
     
     const entry = entries.find(e => e._id === editingCell.entryId);
-    if (!entry) {
-      setUpdateError('Entry not found');
-      setUpdating(false);
-      return;
-    }
-    
     const field = fields.find(f => f._id === editingCell.fieldId);
-    if (!field) {
-      setUpdateError('Field not found');
+    
+    if (!entry || !field) {
+      setUpdateError('Entry or Field not found');
       setUpdating(false);
       return;
     }
     
-    // Validate the value based on field type
+    // Client-side validation before sending to API
     let isValid = true;
     let validationError = '';
+    let valueToSave: unknown = editValue; // Use unknown for flexibility
     
+    // Existing validations...
     if (field.type === 'email' && editValue) {
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!emailRegex.test(editValue)) {
@@ -324,7 +360,35 @@ export default function EntryManager({
         isValid = false;
       }
     }
+
+    // Add validation for website
+    if (field.type === 'website' && editValue) {
+      try {
+        new URL(editValue); // Check if it's a valid URL format
+        valueToSave = editValue.trim();
+      } catch {
+        validationError = 'Must be a valid URL (e.g., https://example.com)';
+        isValid = false;
+      }
+    }
     
+    // Add validation for date
+    if (field.type === 'date' && editValue) {
+      const date = new Date(editValue); // input type=date gives YYYY-MM-DD
+      if (isNaN(date.getTime())) {
+        validationError = 'Must be a valid date (e.g., YYYY-MM-DD).';
+        isValid = false;
+      } else {
+        // Send ISO string or rely on API to parse correctly
+        valueToSave = date.toISOString(); // More robust for API
+      }
+    }
+    
+    // Handle null/empty value clearing
+    if (editValue === '') {
+        valueToSave = null;
+    }
+
     if (!isValid) {
       setUpdateError(validationError);
       setUpdating(false);
@@ -332,8 +396,9 @@ export default function EntryManager({
     }
     
     
-    const updatedData = { ...entry.data, [field.name]: editValue };
+    const updatedData = { ...entry.data, [field.name]: valueToSave };
     
+    // API Call (API validation is primary)
     try {
       const response = await fetch(`/api/tables/${tableId}/entries`, {
         method: 'PUT',
@@ -349,17 +414,16 @@ export default function EntryManager({
       const result = await response.json();
       
       if (result.success) {
-        
         if (onEntryUpdated) {
           onEntryUpdated(result.data);
         } else {
-          
-          onEntryAdded(result.data);
+          onEntryAdded(result.data); // Fallback if onEntryUpdated not provided
         }
-        
-        
         setEditingCell(null);
         setEditValue('');
+      } else if (result.errors && result.errors[field.name]) {
+        // Display specific field error from API
+         setUpdateError(result.errors[field.name]);
       } else {
         throw new Error(result.message || 'Failed to update entry');
       }
@@ -501,13 +565,36 @@ export default function EntryManager({
   };
   
   
-  const formatValue = (value: unknown, type: string): string => {
+  const formatValue = (value: unknown, type: string): React.ReactNode => {
     if (value === null || value === undefined || value === '') {
-      return '-';
+      return <span className="text-gray-400">-</span>;
     }
     
     if (type === 'number' && typeof value === 'number') {
       return value.toString();
+    }
+    
+    if (type === 'website' && typeof value === 'string') {
+      try {
+        // Ensure URL starts with http:// or https:// for the link
+        const url = value.startsWith('http') ? value : `http://${value}`;
+        new URL(url); // Validate format before rendering link
+        return <a href={url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline break-all">{value}</a>;
+      } catch {
+        return String(value); // Render as plain text if invalid URL
+      }
+    }
+    
+    if (type === 'date' && (typeof value === 'string' || value instanceof Date)) {
+      try {
+        const dateObj = new Date(value);
+        if (!isNaN(dateObj.getTime())) {
+           // Simple YYYY-MM-DD format, could use a library like date-fns for more options
+          return dateObj.toLocaleDateString('en-CA'); // en-CA gives YYYY-MM-DD
+        }
+      } catch {
+         // Fall through to default string conversion if parsing fails
+      }
     }
     
     return String(value);
@@ -644,6 +731,35 @@ export default function EntryManager({
                           </option>
                         ))}
                       </select>
+                    )}
+                    {field.type === 'website' && (
+                      <input
+                        type="url"
+                        id={`field-${field._id}`}
+                        className={`mt-1 block w-full rounded-md shadow-sm ${
+                          validationErrors[field.name] 
+                            ? 'border-red-300 focus:border-red-500 focus:ring-red-500' 
+                            : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
+                        }`}
+                        placeholder="https://example.com"
+                        value={formData[field.name] as string || ''}
+                        onChange={(e) => handleFieldChange(field.name, e.target.value)}
+                        disabled={adding}
+                      />
+                    )}
+                    {field.type === 'date' && (
+                      <input
+                        type="date"
+                        id={`field-${field._id}`}
+                        className={`mt-1 block w-full rounded-md shadow-sm ${
+                          validationErrors[field.name] 
+                            ? 'border-red-300 focus:border-red-500 focus:ring-red-500' 
+                            : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
+                        }`}
+                        value={formData[field.name] as string || ''}
+                        onChange={(e) => handleFieldChange(field.name, e.target.value)}
+                        disabled={adding}
+                      />
                     )}
                     {validationErrors[field.name] && (
                       <p className="mt-1 text-sm text-red-600">{validationErrors[field.name]}</p>
@@ -827,62 +943,68 @@ export default function EntryManager({
                           >
                             {isEditing ? (
                               <div className="relative">
-                                {field.type === 'multiple_choice' && field.options && field.options.length > 0 ? (
+                                {/* Conditional Input Rendering based on Field Type */}
+                                {field.type === 'multiple_choice' ? (
                                   <select
                                     ref={editSelectRef}
                                     value={editValue}
                                     onChange={(e) => setEditValue(e.target.value)}
                                     onKeyDown={handleKeyDown}
-                                    onBlur={saveEditedCell}
-                                    className="w-full p-0 border-0 focus:ring-2 focus:ring-blue-500 bg-transparent"
-                                    disabled={updating}
-                                    autoFocus
+                                    onBlur={saveEditedCell} // Save on blur
+                                    className="block w-full rounded-md border-blue-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
                                   >
-                                    <option value="">Select an option</option>
-                                    {field.options.map((option, idx) => (
-                                      <option key={idx} value={option}>
-                                        {option}
-                                      </option>
+                                    <option value="">Select...</option>
+                                    {field.options?.map((option, idx) => (
+                                      <option key={idx} value={option}>{option}</option>
                                     ))}
                                   </select>
                                 ) : (
                                   <input
                                     ref={editInputRef}
-                                    type={field.type === 'number' ? 'number' : field.type}
+                                    type={field.type === 'number' ? 'text' : // Use text for number to allow intermediate states
+                                          field.type === 'email' ? 'email' :
+                                          field.type === 'time' ? 'time' :
+                                          field.type === 'website' ? 'url' : // Use url type
+                                          field.type === 'date' ? 'date' : // Use date type
+                                          'text'} 
                                     value={editValue}
                                     onChange={(e) => setEditValue(e.target.value)}
                                     onKeyDown={handleKeyDown}
-                                    onBlur={saveEditedCell}
-                                    className="w-full p-0 border-0 focus:ring-2 focus:ring-blue-500 bg-transparent"
-                                    disabled={updating}
-                                    autoFocus
+                                    onBlur={saveEditedCell} // Save on blur
+                                    className="block w-full rounded-md border-blue-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                                    inputMode={field.type === 'number' ? 'numeric' : undefined}
+                                    pattern={field.type === 'number' ? '[0-9]*\\.?.*' : // Looser pattern for input
+                                             field.type === 'time' ? '([01]\\d|2[0-3]):([0-5]\\d)' : undefined}
+                                    placeholder={field.type === 'time' ? 'HH:MM' :
+                                                 field.type === 'date' ? 'YYYY-MM-DD' :
+                                                 field.type === 'website' ? 'https://...' : ''}
+                                    autoFocus // Autofocus the input
                                   />
                                 )}
+                                
+                                {/* Update Error Display */}
                                 {updateError && (
-                                  <div className="absolute top-full left-0 mt-1 z-10 w-48 text-xs bg-red-100 text-red-800 p-1 rounded">
+                                  <div className="absolute top-full left-0 mt-1 text-xs text-red-600 bg-white border border-red-300 rounded shadow-lg p-1 z-10 whitespace-normal">
                                     {updateError}
                                   </div>
                                 )}
                               </div>
                             ) : (
-                              <div className="editable-cell min-h-[1.5rem] overflow-hidden text-ellipsis">
-                                {formatValue(entry.data[field.name], field.type)}
-                              </div>
+                              // Display Mode: Use formatValue
+                              formatValue(entry.data[field.name], field.type)
                             )}
                           </td>
                         );
                       })}
                       {/* Actions cell */}
-                      <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-500 border-r border-gray-100 column-actions">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setShowDeleteConfirm(entry._id);
-                          }}
-                          className="text-red-600 hover:text-red-900"
+                      <td className="px-3 py-4 whitespace-nowrap text-right text-sm font-medium sticky right-0 bg-white z-10 column-actions">
+                         <button 
+                          onClick={() => setShowDeleteConfirm(entry._id)}
+                          className={`text-red-600 hover:text-red-800 focus:outline-none ${deleting === entry._id ? 'opacity-50 cursor-not-allowed' : ''}`}
+                          disabled={deleting === entry._id}
                           title="Delete row"
                         >
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                           <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                             <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
                           </svg>
                         </button>

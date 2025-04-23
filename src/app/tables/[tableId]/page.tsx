@@ -10,7 +10,7 @@ import EntryManager from '@/components/EntryManager';
 interface Field {
   _id: string;
   name: string;
-  type: 'text' | 'number' | 'email' | 'time' | 'multiple_choice';
+  type: 'text' | 'number' | 'email' | 'time' | 'multiple_choice' | 'website' | 'date';
   options?: string[]; // For multiple_choice field type
 }
 

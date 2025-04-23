@@ -3,7 +3,7 @@ import { useState } from 'react';
 interface Field {
   _id: string;
   name: string;
-  type: 'text' | 'number' | 'email' | 'time' | 'multiple_choice';
+  type: 'text' | 'number' | 'email' | 'time' | 'multiple_choice' | 'website' | 'date';
   options?: string[]; // For multiple_choice field type
 }
 
@@ -23,7 +23,7 @@ export default function FieldManager({
   onFieldDeleted 
 }: FieldManagerProps) {
   const [fieldName, setFieldName] = useState('');
-  const [fieldType, setFieldType] = useState<'text' | 'number' | 'email' | 'time' | 'multiple_choice'>('text');
+  const [fieldType, setFieldType] = useState<'text' | 'number' | 'email' | 'time' | 'multiple_choice' | 'website' | 'date'>('text');
   const [fieldOptions, setFieldOptions] = useState<string[]>(['']);
   const [adding, setAdding] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -31,7 +31,7 @@ export default function FieldManager({
   // Field editing state
   const [editingField, setEditingField] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
-  const [editType, setEditType] = useState<'text' | 'number' | 'email' | 'time' | 'multiple_choice'>('text');
+  const [editType, setEditType] = useState<'text' | 'number' | 'email' | 'time' | 'multiple_choice' | 'website' | 'date'>('text');
   const [editOptions, setEditOptions] = useState<string[]>(['']);
   const [updating, setUpdating] = useState(false);
   const [updateError, setUpdateError] = useState<string | null>(null);
@@ -42,7 +42,7 @@ export default function FieldManager({
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
   // Reset field options when field type changes
-  const handleFieldTypeChange = (type: 'text' | 'number' | 'email' | 'time' | 'multiple_choice') => {
+  const handleFieldTypeChange = (type: 'text' | 'number' | 'email' | 'time' | 'multiple_choice' | 'website' | 'date') => {
     setFieldType(type);
     if (type === 'multiple_choice' && fieldOptions.length === 0) {
       setFieldOptions(['']);
@@ -112,7 +112,7 @@ export default function FieldManager({
     try {
       interface FieldRequest {
         name: string;
-        type: 'text' | 'number' | 'email' | 'time' | 'multiple_choice';
+        type: 'text' | 'number' | 'email' | 'time' | 'multiple_choice' | 'website' | 'date';
         options?: string[];
       }
       
@@ -192,7 +192,7 @@ export default function FieldManager({
       interface FieldUpdateRequest {
         fieldId: string;
         name: string;
-        type: 'text' | 'number' | 'email' | 'time' | 'multiple_choice';
+        type: 'text' | 'number' | 'email' | 'time' | 'multiple_choice' | 'website' | 'date';
         options?: string[];
       }
       
@@ -287,7 +287,7 @@ export default function FieldManager({
               id="fieldType"
               className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
               value={fieldType}
-              onChange={(e) => handleFieldTypeChange(e.target.value as 'text' | 'number' | 'email' | 'time' | 'multiple_choice')}
+              onChange={(e) => handleFieldTypeChange(e.target.value as 'text' | 'number' | 'email' | 'time' | 'multiple_choice' | 'website' | 'date')}
               disabled={adding}
             >
               <option value="text">Text</option>
@@ -295,6 +295,8 @@ export default function FieldManager({
               <option value="email">Email</option>
               <option value="time">Time (HH:MM)</option>
               <option value="multiple_choice">Multiple Choice</option>
+              <option value="website">Website Link</option>
+              <option value="date">Date</option>
             </select>
           </div>
           
@@ -398,7 +400,7 @@ export default function FieldManager({
                           id={`edit-type-${field._id}`}
                           className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                           value={editType}
-                          onChange={(e) => setEditType(e.target.value as 'text' | 'number' | 'email' | 'time' | 'multiple_choice')}
+                          onChange={(e) => setEditType(e.target.value as 'text' | 'number' | 'email' | 'time' | 'multiple_choice' | 'website' | 'date')}
                           disabled={updating}
                         >
                           <option value="text">Text</option>
@@ -406,6 +408,8 @@ export default function FieldManager({
                           <option value="email">Email</option>
                           <option value="time">Time (HH:MM)</option>
                           <option value="multiple_choice">Multiple Choice</option>
+                          <option value="website">Website Link</option>
+                          <option value="date">Date</option>
                         </select>
                       </div>
                       
@@ -571,6 +575,10 @@ function getFieldTypeColor(type: string): string {
       return 'bg-yellow-100 text-yellow-800';
     case 'multiple_choice':
       return 'bg-pink-100 text-pink-800';
+    case 'website':
+      return 'bg-indigo-100 text-indigo-800';
+    case 'date':
+      return 'bg-teal-100 text-teal-800';
     default:
       return 'bg-gray-100 text-gray-800';
   }

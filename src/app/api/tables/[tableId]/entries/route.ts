@@ -82,10 +82,38 @@ function validateData(data: Record<string, unknown>, fields: IField[]): { isVali
                     parsedValue = value.trim();
                 }
                 break;
-            default:
-                errors[fieldName] = `Unknown field type: ${fieldType}`;
-                fieldIsValid = false;
+            case 'website':
+                if (typeof value !== 'string') {
+                    errors[fieldName] = 'Must be a string (URL).';
+                    fieldIsValid = false;
+                } else {
+                    // Basic URL check (can be enhanced)
+                    try {
+                        new URL(value);
+                        parsedValue = value.trim(); 
+                    } catch {
+                        errors[fieldName] = 'Must be a valid URL (e.g., https://example.com).';
+                        fieldIsValid = false;
+                    }
+                }
                 break;
+            case 'date':
+                const date = new Date(String(value)); // Try parsing as string first
+                if (isNaN(date.getTime())) {
+                    errors[fieldName] = 'Must be a valid date (e.g., YYYY-MM-DD).';
+                    fieldIsValid = false;
+                } else {
+                    // Store as Date object for MongoDB
+                    parsedValue = date;
+                }
+                break;
+            default:
+                 // This should ideally not happen if Field model validation works
+                 // Assertiveness for type checking
+                 const _exhaustiveCheck: never = fieldType;
+                 errors[fieldName] = `Unknown field type: ${_exhaustiveCheck}`;
+                 fieldIsValid = false;
+                 break;
         }
 
         if (fieldIsValid) {
